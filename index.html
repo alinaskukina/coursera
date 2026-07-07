@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный журнал исследователя</title>
+</head>
+<body>
+
+<div style="background: #f9f6f0; 
+            border-radius: 24px; 
+            padding: 30px 25px; 
+            border: 1px solid #d9cdb3;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            font-family: 'Courier New', monospace;
+            max-width: 700px;
+            margin: 20px auto;">
+
+    <!-- ЗАГОЛОВОК ЖУРНАЛА -->
+    <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px dashed #b8a68b; padding-bottom: 15px;">
+        <span style="font-size: 36px;">📓</span>
+        <h2 style="margin: 0; color: #3e2c1b; font-weight: 400; letter-spacing: 1px; font-size: 26px;">
+            Личный журнал исследователя
+        </h2>
+    </div>
+
+    <!-- БЛОК ЗАПИСИ -->
+    <div style="margin-top: 25px;">
+        <p style="color: #5a4a3a; font-size: 17px; margin-bottom: 12px;">
+            ✏️ Запиши, что тебе запомнилось или было сложно:
+        </p>
+        <form id="journalForm" onsubmit="saveLocalNote(event)">
+            <textarea id="noteInput" 
+                      rows="3" 
+                      placeholder="Например: 'Мне было трудно с логарифмами, но я разобрался...'"
+                      style="width: 100%;
+                             padding: 15px;
+                             border-radius: 16px;
+                             border: 2px solid #d9cdb3;
+                             background: #fffcf8;
+                             font-family: inherit;
+                             font-size: 16px;
+                             resize: vertical;
+                             box-sizing: border-box;
+                             outline: none;
+                             transition: border-color 0.3s;"
+                      required></textarea>
+            <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
+                <button type="submit"
+                        style="background: #3e2c1b;
+                               color: #f9f6f0;
+                               border: none;
+                               border-radius: 40px;
+                               padding: 12px 28px;
+                               font-size: 17px;
+                               font-weight: bold;
+                               cursor: pointer;
+                               transition: background 0.3s;
+                               font-family: inherit;">
+                    📝 Сохранить в журнал
+                </button>
+                <button type="button"
+                        onclick="sendToYandex()"
+                        style="background: #ffcc00;
+                               color: #3e2c1b;
+                               border: none;
+                               border-radius: 40px;
+                               padding: 12px 28px;
+                               font-size: 17px;
+                               font-weight: bold;
+                               cursor: pointer;
+                               font-family: inherit;">
+                    📤 Отправить учителю (Яндекс)
+                </button>
+            </div>
+        </form>
+        <p id="saveMsg" style="color: #2e7d32; margin-top: 8px; font-size: 15px; height: 20px;"></p>
+    </div>
+
+    <!-- БЛОК ПОКАЗА ПОСЛЕДНИХ ЗАПИСЕЙ -->
+    <div style="margin-top: 30px; border-top: 2px dashed #b8a68b; padding-top: 20px;">
+        <p style="color: #5a4a3a; font-size: 17px; margin-bottom: 15px;">
+            📖 Твои последние заметки:
+        </p>
+        <div id="journalEntries" style="background: #fffcf8; border-radius: 16px; padding: 15px; border: 1px solid #e6ddcd;">
+            <!-- Сюда динамически подгружаются заметки -->
+        </div>
+    </div>
+</div>
+
+<script>
+// ====== РАБОТА С ЛОКАЛЬНЫМ ХРАНИЛИЩЕМ ======
+function getNotes() {
+    const data = localStorage.getItem('mathJournal');
+    return data ? JSON.parse(data) : [];
+}
+
+function saveNotes(notes) {
+    localStorage.setItem('mathJournal', JSON.stringify(notes));
+}
+
+function saveLocalNote(event) {
+    event.preventDefault();
+    const input = document.getElementById('noteInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const notes = getNotes();
+    notes.push({
+        time: new Date().toISOString(),
+        text: text
+    });
+    saveNotes(notes);
+    input.value = '';
+    document.getElementById('saveMsg').innerText = '✅ Запись сохранена локально!';
+    displayNotes();
+}
+
+function displayNotes() {
+    const container = document.getElementById('journalEntries');
+    const notes = getNotes();
+    if (notes.length === 0) {
+        container.innerHTML = '<p style="color: #aaa; text-align: center;">Пока нет записей. Будь первым!</p>';
+        return;
+    }
+    // Показываем последние 5 (перевернутый массив)
+    const recent = notes.slice(-5).reverse();
+    let html = '';
+    recent.forEach(note => {
+        const date = new Date(note.time).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        html += `
+            <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                <div style="display: flex; justify-content: space-between; color: #8a7a6a; font-size: 13px; margin-bottom: 4px;">
+                    <span>📅 ${date}</span>
+                </div>
+                <div style="color: #3e2c1b; font-size: 16px; line-height: 1.5;">
+                    ${note.text}
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// ====== ОТПРАВКА В ЯНДЕКС ФОРМУ ======
+function sendToYandex() {
+    const notes = getNotes();
+    if (notes.length === 0) {
+        alert('У тебя пока нет записей. Напиши что-нибудь!');
+        return;
+    }
+    // Собираем все заметки в один текст
+    const allText = notes.map((n, i) => `${i+1}. ${n.text} (${new Date(n.time).toLocaleString('ru-RU')})`).join('\n');
+    
+    // ЗАМЕНИТЕ ЭТУ ССЫЛКУ НА ВАШУ ЯНДЕКС ФОРМУ
+    const formUrl = 'https://forms.yandex.ru/ваша_ссылка/';
+    
+    // Открываем форму в новой вкладке
+    window.open(formUrl, '_blank');
+    alert('Откройте форму и вставьте текст заметок (он скопирован в буфер обмена)');
+    
+    // Копируем текст в буфер
+    navigator.clipboard.writeText(allText).catch(() => {});
+}
+
+// ====== ИНИЦИАЛИЗАЦИЯ ======
+displayNotes();
+</script>
+
+</body>
+</html>
